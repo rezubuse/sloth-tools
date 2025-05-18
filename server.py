@@ -21,7 +21,7 @@ from utils import TIMED_EVENT_MODES
 import os
 import subprocess
 import time
-
+import re
 
 def create_app():
 
@@ -50,7 +50,20 @@ def create_app():
     def sendCode(code, protocol, pulselength, iterations):
         if not os.path.isfile(codesendBinPath):
             return 'codesend binary not found'
-        args = ['sudo', codesendBinPath, code, protocol, pulselength]
+        # Check if code has DIP switch format to use send <systemCode> <unitCode> <command>
+        match = re.fullmatch(r'([01]{5}).*([01]{5}).*([01]{1})', code)
+        if match:
+            # Get sendBinPath from codesendBinPath
+            sendBinPath = codesendBinPath.replace('codesend', 'send')
+            if not os.path.isfile(sendBinPath):
+                return 'send binary not found'
+            # Extract groups from match
+            systemCode, unitCode, command = match.groups()
+            # Combine args for send binary
+            args = [sendBinPath, systemCode, unitCode, command]
+        else:
+            # Combine args for codesend binary
+            args = ['sudo', codesendBinPath, code, protocol, pulselength]
         FNULL = open(os.devnull, 'w')
         for i in range(iterations):
             proc = subprocess.Popen(args, stdout=FNULL)
